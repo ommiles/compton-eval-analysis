@@ -16,6 +16,17 @@ import json
 import numpy as np
 
 from .align import corrected_success_rate, split_labeled
+from .coding import (
+    axial_prompt,
+    build_queue,
+    check_taxonomy,
+    load_open_codes,
+    load_taxonomy,
+    load_traces,
+    open_code_stub,
+    prevalence,
+    saturation_report,
+)
 from .compare import compare_run
 from .load import load_run
 from .plots import plot_dimension_intervals, plot_paired_deltas, plot_power_curves
@@ -189,6 +200,94 @@ def split(args: argparse.Namespace) -> int:
     return 0
 
 
+def sample(args: argparse.Namespace) -> int:
+    """Build a blended review queue and emit an open-coding worksheet."""
+    traces = load_traces(args.run)
+    queue = build_queue(traces, n=args.n, seed=args.seed)
+
+    counts: dict[str, int] = {}
+    for _, why in queue:
+        counts[why] = counts.get(why, 0) + 1
+
+    print(f"\n  {len(traces)} traces available, {len(queue)} queued")
+    for why in ("failure-driven", "uncertainty", "random"):
+        c = counts.get(why, 0)
+        print(f"    {why:16} {c:3}  ({c / len(queue):.0%})")
+    print(
+        "\n  The random slice is the only unbiased read on overall quality.\n"
+        "  Prevalence over the whole queue overstates failure by construction.\n"
+    )
+
+    out = open_code_stub(queue, args.out)
+    print(f"  wrote {out}")
+    print(
+        "\n  Next: read each trace and fill in `note` and `acceptable`.\n"
+        "  One short lowercase note on the FIRST failure. Do not diagnose or\n"
+        "  propose fixes. This step is not delegated to a model.\n"
+    )
+    return 0
+
+
+def saturation(args: argparse.Namespace) -> int:
+    codes = load_open_codes(args.codes)
+    payload = json.loads(Path(args.codes).read_text())
+    n_queued = len(payload.get("traces", []))
+    r = saturation_report(codes, n_queued)
+
+    print(f"\n  coded {r['coded']}/{r['queued']}   problematic: {r['problems']}")
+    print(f"  {r['advice']}\n")
+    return 0
+
+
+def axial(args: argparse.Namespace) -> int:
+    codes = load_open_codes(args.codes)
+    problems = [c for c in codes if not c.acceptable]
+    if not problems:
+        print("\n  No traces marked unacceptable — nothing to cluster.\n")
+        return 0
+
+    print(f"\n  {len(problems)} problematic notes.\n")
+    print("  " + "─" * 66)
+    print(axial_prompt(codes, args.system))
+    print("  " + "─" * 66)
+    print(
+        "\n  Paste that into a model, then EDIT what comes back. It does not\n"
+        "  know how the system works or how you would fix each failure, so it\n"
+        "  merges modes that need different fixes. Save the reviewed result as\n"
+        "  a taxonomy file with name/definition/examples per mode.\n"
+    )
+    return 0
+
+
+def prevalence_cmd(args: argparse.Namespace) -> int:
+    modes = load_taxonomy(args.taxonomy)
+    warnings = check_taxonomy(modes)
+    if warnings:
+        print()
+        for w in warnings:
+            print(f"  ! {w}")
+
+    payload = json.loads(Path(args.labels).read_text())
+    labels = payload["labels"] if "labels" in payload else payload
+    sampled_as = payload.get("sampled_as")
+
+    rows = prevalence(labels, modes, sampled_as=sampled_as)
+    print(f"\n  {len(labels)} labeled traces, {len(modes)} failure modes\n")
+    for r in rows:
+        line = (f"  {r['mode'][:34]:34} {r['rate']:.2f} "
+                f"[{r['ci_low']:.2f}, {r['ci_high']:.2f}]  ({r['count']}/{r['n']})")
+        if "unbiased_rate" in r:
+            line += (f"   random-only: {r['unbiased_rate']:.2f} "
+                     f"[{r['unbiased_ci_low']:.2f}, {r['unbiased_ci_high']:.2f}]"
+                     f" (n={r['unbiased_n']})")
+        print(line)
+    print()
+    if args.out:
+        Path(args.out).write_text(json.dumps(rows, indent=2))
+        print(f"  wrote {args.out}\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="compton-eval",
@@ -225,6 +324,28 @@ def main(argv: list[str] | None = None) -> int:
     s_.add_argument("--seed", type=int, default=0)
     s_.add_argument("--out", default=None)
     s_.set_defaults(func=split)
+
+    q = sub.add_parser("sample", help="build a blended review queue for open coding")
+    q.add_argument("run", help="eval run directory containing variant artifacts")
+    q.add_argument("--n", type=int, default=40)
+    q.add_argument("--seed", type=int, default=0)
+    q.add_argument("--out", default="open-codes.json")
+    q.set_defaults(func=sample)
+
+    sat = sub.add_parser("saturation", help="has open coding gone far enough?")
+    sat.add_argument("codes", help="filled-in open-coding worksheet")
+    sat.set_defaults(func=saturation)
+
+    ax = sub.add_parser("axial", help="emit the clustering prompt for your notes")
+    ax.add_argument("codes", help="filled-in open-coding worksheet")
+    ax.add_argument("--system", default="an LLM pipeline that summarizes city council meetings")
+    ax.set_defaults(func=axial)
+
+    pv = sub.add_parser("prevalence", help="failure-mode rates with intervals")
+    pv.add_argument("labels", help="JSON of {trace_id: {mode: 0|1}}")
+    pv.add_argument("--taxonomy", required=True)
+    pv.add_argument("--out", default=None)
+    pv.set_defaults(func=prevalence_cmd)
 
     args = parser.parse_args(argv)
     return args.func(args)

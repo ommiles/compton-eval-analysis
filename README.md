@@ -4,7 +4,9 @@ A statistical layer for LLM eval runs. It answers one question: which of these d
 
 Prompt evaluation harnesses tend to end at a table of means. Variant A scored 0.76, variant B scored 0.84, ship B. At the sample sizes anyone actually runs, a dozen items or maybe two dozen, that table cannot support the decision being made on it.
 
-This package reads the output of an existing eval harness and adds the part that licenses a conclusion: interval estimates, paired significance tests, correction for running many tests at once, a reliability check on the LLM judge, and a power analysis that says how many items the next run needs.
+This package reads the output of an existing eval harness and adds the part that licenses a conclusion: interval estimates, paired significance tests, correction for running many tests at once, a power analysis that says how many items the next run needs, and judge validation against human labels.
+
+It also implements the step that should come before all of that. The four dimensions this harness scores were designed top-down; error analysis builds the taxonomy from traces instead. Those commands are in [Error analysis](#error-analysis).
 
 Built against the summarization eval for [We the Compton](https://wethecompton.com), a civic intelligence platform. Everything below comes from a real run, not a demo fixture.
 
@@ -62,6 +64,58 @@ Tone is scored by an LLM against fixed calibration anchors. Anchoring pins the *
 So the module refuses to compute a coefficient from single-pass data. Returning one anyway would be worse than returning nothing.
 
 Self-consistency is only the floor, though. A judge can return the same answer every time and have that answer be wrong, and the coefficients above would call it excellent. The question that decides whether any of this means anything is whether the judge agrees with a *human*.
+
+## Error analysis
+
+Following ch. 3 and ch. 10.
+
+Everything above measures four dimensions that were designed top-down, from what seemed important before anyone read a trace. Grounded theory runs the other way: read traces, write down what actually went wrong, and let the categories fall out of that. The four commands below implement that loop.
+
+```
+compton-eval sample <run-dir>     # blended review queue + open-coding worksheet
+compton-eval saturation codes.json
+compton-eval axial      codes.json
+compton-eval prevalence labels.json --taxonomy taxonomy.json
+```
+
+**Sampling is blended, and the blend matters.** Ch. 10 suggests 50% failure-driven, 30% uncertainty, 20% random. The random fifth is the one everyone drops, and it is the only slice that estimates the real failure rate; the other 80% is selected to over-represent failure on purpose.
+
+```
+  36 traces available, 24 queued
+    failure-driven    12  (50%)
+    uncertainty        7  (29%)
+    random             5  (21%)
+```
+
+Uncertainty here means the deterministic signals disagree with each other, which flags borderline traces. Only deterministic scores drive the selection. Letting the LLM judge choose what a human reviews would fold the judge's blind spots into the taxonomy meant to expose them.
+
+**Open coding is not automated, deliberately.** `sample` emits a worksheet and stops. Ch. 3 recommends an LLM for axial coding and explicitly not for open coding, because that step is your judgment about what counts as a failure. The module enforces the shape rather than the content: an empty note raises, and a note without a binary accept/reject raises with "pick a side." Likert scales are the third pitfall the chapter names, since underspecified rubrics produce lower agreement and higher variance.
+
+**Saturation is gated.** Ch. 3 says keep reading until at least 20 problematic traces are in hand and new failure modes have stopped appearing. The first half is checkable and the tool checks it:
+
+```
+  coded 24/24   problematic: 18
+  Keep reading. 2 more problematic traces before the taxonomy is worth building.
+```
+
+**Axial coding emits the prompt rather than running it.** `axial` fills the chapter's clustering prompt with your notes and prints it. The book is direct that the model's groupings should not be accepted blindly, since it does not know how the system works or which failures need different fixes. Reviewing and editing the taxonomy is the work, not a formality.
+
+**Taxonomy gets structurally checked.** Fewer than five modes usually means things were merged that have different root causes; more than eight gets hard to apply consistently. Modes without examples drift. And generic categories get called out by name:
+
+```
+  ! 'hallucination' is a generic category from LLM research, not something
+    that emerged from your traces. Ch. 3 calls this out as the second most
+    common mistake in error analysis.
+```
+
+**Prevalence reports two numbers, not one.**
+
+```
+  spokesperson_voice        0.67 [0.46, 0.83]  (16/24)   random-only: 0.40 [0.00, 0.80] (n=5)
+  anomaly_not_surfaced      0.42 [0.25, 0.62]  (10/24)   random-only: 0.00 [0.00, 0.00] (n=5)
+```
+
+The left number is the rate across the review queue, which is biased upward by construction. The right one uses only the randomly sampled traces and is the one that answers "how often does this happen." Reporting the queue rate as the system's failure rate is an easy and expensive mistake, so the tool computes both and labels them.
 
 ## Validating the judge
 
@@ -141,11 +195,12 @@ src/compton_eval/
   bootstrap.py    BCa intervals, paired and unpaired
   compare.py      signed-rank, Cliff's delta, Holm correction
   power.py        simulation-based prospective power
+  coding.py       blended sampling, open/axial coding, taxonomy, prevalence
   align.py        TPR/TNR against human labels, Rogan-Gladen correction, splits
   reliability.py  ICC(2,1) and Krippendorff's alpha; self-consistency only
   plots.py        forest, interval, and power charts
-  cli.py          `analyze`, `align`, `split`
-tests/            45 tests, property-based rather than golden-number
+  cli.py          `analyze` `align` `split` `sample` `saturation` `axial` `prevalence`
+tests/            67 tests, property-based rather than golden-number
 examples/         run output, plus synthetic labels for the align demo
 ```
 

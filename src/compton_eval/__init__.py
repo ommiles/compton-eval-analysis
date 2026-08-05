@@ -13,6 +13,17 @@ from .align import (
     split_labeled,
 )
 from .bootstrap import Interval, bootstrap_mean, bootstrap_paired_delta
+from .coding import (
+    FailureMode,
+    OpenCode,
+    Trace,
+    axial_prompt,
+    build_queue,
+    check_taxonomy,
+    load_traces,
+    prevalence,
+    saturation_report,
+)
 from .compare import cliffs_delta, compare_run, holm_bonferroni
 from .load import DIMENSIONS, EvalRun, load_run, load_runs
 from .power import PowerCurve, power_for_run, power_table, simulate_power
@@ -23,7 +34,9 @@ __version__ = "0.1.0"
 __all__ = [
     "Alignment", "CorrectedRate", "DIMENSIONS", "EvalRun", "Interval",
     "PowerCurve", "Reliability", "correct_rate", "corrected_success_rate",
-    "measure_alignment", "split_labeled",
+    "measure_alignment", "split_labeled", "FailureMode", "OpenCode", "Trace",
+    "axial_prompt", "build_queue", "check_taxonomy", "load_traces",
+    "prevalence", "saturation_report",
     "bootstrap_mean", "bootstrap_paired_delta", "check_repeatability",
     "cliffs_delta", "compare_run", "holm_bonferroni", "icc_2_1",
     "krippendorff_alpha", "load_run", "load_runs", "power_for_run",
