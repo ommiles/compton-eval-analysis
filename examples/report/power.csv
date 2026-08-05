@@ -1,0 +1,4 @@
+dimension,min_effect,target_power,meetings_needed,power_at_12
+anomaly_surface_rate,0.1,0.8,40,0.551
+tone_score,0.25,0.8,40,0.38375
+factual_precision,0.05,0.8,40,0.3585
