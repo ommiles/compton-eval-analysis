@@ -11,6 +11,13 @@ k > 1 times. A single-pass run cannot support it, so
 :func:`check_repeatability` reports honestly that the data is missing
 rather than computing something meaningless.
 
+**This module is not sufficient on its own.** Self-consistency is not
+correctness: a judge can return the same answer every time and have that
+answer be wrong, and the coefficients here would call it excellent. For
+agreement against *human* labels, and for the bias correction that follows
+from it, see :mod:`compton_eval.align`. Reliability is a floor, not a
+verdict.
+
 Two coefficients, because they answer different questions:
 
 - **ICC(2,1)** — absolute agreement for a single rating. "If I score this

@@ -61,6 +61,50 @@ Tone is scored by an LLM against fixed calibration anchors. Anchoring pins the *
 
 So the module refuses to compute a coefficient from single-pass data. Returning one anyway would be worse than returning nothing.
 
+Self-consistency is only the floor, though. A judge can return the same answer every time and have that answer be wrong, and the coefficients above would call it excellent. The question that decides whether any of this means anything is whether the judge agrees with a *human*.
+
+## Validating the judge
+
+Following Husain and Shankar, [*Evals for AI Engineers*](https://evals.info) ch. 5.
+
+Split labeled traces three ways, refine the judge prompt against dev only, and read the test split exactly once after freezing the prompt. Then measure two rates on that frozen split: how many real passes the judge catches, and how many real fails it catches.
+
+```
+compton-eval split  labels.json          # stratified train/dev/test
+compton-eval align  labels.json          # TPR/TNR, then correct a batch
+```
+
+```
+── Judge accuracy (frozen test set) ───────────────────────────
+  TPR=0.839 (52/62)  TNR=0.914 (53/58)  informedness=0.753
+  ! TPR 0.84 below 90% — keep refining the prompt
+
+── True rate over the unlabeled batch ─────────────────────────
+  raw judge pass rate : 0.6768  (3262/4820)
+  bias-corrected      : 0.7848  [0.6982, 0.9018]  (95% CI)
+  correction moved it : +0.1080
+```
+
+That gap is the point. Counting the judge's own "pass" labels over 4,820 traces gives 0.68, and running it over ten times as many traces would still give 0.68. The bias does not shrink with sample size, so more unlabeled data just buys precision around the wrong number. Correcting with the measured error rates moves the estimate eleven points.
+
+**Why TPR and TNR rather than precision and recall.** The goal is estimating the true pass rate, and a judge can only get that wrong two ways: missing real passes, or passing real fails. Those two rates name exactly those two errors.
+
+**Why binary.** TPR and TNR are undefined on a 1–5 scale, so a Likert judge cannot be validated this way at all. That, rather than tidiness, is the argument for one binary evaluator per failure mode.
+
+The correction is Rogan and Gladen (1978):
+
+```
+theta = (p_obs + TNR - 1) / (TPR + TNR - 1)
+```
+
+with a bootstrap over the labeled test set for the interval: resample the (human label, judge prediction) pairs, recompute both rates on each draw, re-apply the correction, take the 2.5th and 97.5th percentiles.
+
+Two deliberate departures from the reference implementation. It rejects the correction when `TPR + TNR - 1 <= 0`; this uses a small positive floor instead, because a judge with informedness of 0.01 passes a `> 0` test and then divides by 0.01, amplifying noise a hundredfold into a confident-looking number built from nothing. And `include_batch_uncertainty=True` additionally resamples the unlabeled batch, which matters when that batch is small; the book holds `p_obs` fixed, which is right when it is large. Default behavior matches the book.
+
+Verified against the book's own reference implementation on shared inputs: identical point estimate to machine precision, CI bounds agreeing to four decimals.
+
+**These numbers are synthetic.** `examples/alignment-demo.json` exists so the interface is runnable and the output above is real output rather than a mockup. No human labels exist for the actual corpus yet. Producing them is the next piece of work, and nothing here invents them.
+
 ## Method
 
 Five decisions, each of which changes the answer.
@@ -97,11 +141,12 @@ src/compton_eval/
   bootstrap.py    BCa intervals, paired and unpaired
   compare.py      signed-rank, Cliff's delta, Holm correction
   power.py        simulation-based prospective power
-  reliability.py  ICC(2,1) and Krippendorff's alpha for judge agreement
+  align.py        TPR/TNR against human labels, Rogan-Gladen correction, splits
+  reliability.py  ICC(2,1) and Krippendorff's alpha; self-consistency only
   plots.py        forest, interval, and power charts
-  cli.py          `compton-eval analyze`
-tests/            23 tests, property-based rather than golden-number
-examples/report/  output from the run described above
+  cli.py          `analyze`, `align`, `split`
+tests/            45 tests, property-based rather than golden-number
+examples/         run output, plus synthetic labels for the align demo
 ```
 
 Requires Python 3.11+, numpy, pandas, scipy, matplotlib.
@@ -127,5 +172,17 @@ The loader expects a `scores.json` shaped like this:
 Rename `meeting_id` to whatever your items are, then adjust `DIMENSIONS` in `load.py` with each metric's scale. Everything downstream is generic. Nothing in it is specific to civic data or to summarization.
 
 To make the reliability check work, score each item `k >= 3` times and tag the passes in a `pass` column.
+
+For judge alignment, supply human labels alongside judge predictions:
+
+```json
+{
+  "failure_mode": "summary_omits_top_fiscal_impact",
+  "test_set": [{"trace_id": "1885", "human": 1, "judge": 1}],
+  "unlabeled": {"n": 4820, "judged_pass": 3262}
+}
+```
+
+Both label fields are binary, 1 for pass. `unlabeled` is the batch the frozen judge ran over without human review.
 
 Built by [O.M. Miles](https://github.com/ommiles). QA Automation Engineer, M.S. Analytics candidate at Georgia Tech. MIT licensed.

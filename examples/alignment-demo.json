@@ -1,0 +1,610 @@
+{
+  "_comment": "SYNTHETIC DEMO DATA. Generated to exercise the interface. No human labels exist for the real corpus yet \u2014 see README.",
+  "failure_mode": "summary_omits_top_fiscal_impact",
+  "test_set": [
+    {
+      "trace_id": "synthetic-000",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-001",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-002",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-003",
+      "human": 1,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-004",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-005",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-006",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-007",
+      "human": 1,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-008",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-009",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-010",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-011",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-012",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-013",
+      "human": 1,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-014",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-015",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-016",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-017",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-018",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-019",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-020",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-021",
+      "human": 1,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-022",
+      "human": 1,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-023",
+      "human": 1,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-024",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-025",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-026",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-027",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-028",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-029",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-030",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-031",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-032",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-033",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-034",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-035",
+      "human": 1,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-036",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-037",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-038",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-039",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-040",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-041",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-042",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-043",
+      "human": 1,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-044",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-045",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-046",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-047",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-048",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-049",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-050",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-051",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-052",
+      "human": 1,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-053",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-054",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-055",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-056",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-057",
+      "human": 1,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-058",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-059",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-060",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-061",
+      "human": 1,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-062",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-063",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-064",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-065",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-066",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-067",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-068",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-069",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-070",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-071",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-072",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-073",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-074",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-075",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-076",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-077",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-078",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-079",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-080",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-081",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-082",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-083",
+      "human": 0,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-084",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-085",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-086",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-087",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-088",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-089",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-090",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-091",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-092",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-093",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-094",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-095",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-096",
+      "human": 0,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-097",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-098",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-099",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-100",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-101",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-102",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-103",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-104",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-105",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-106",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-107",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-108",
+      "human": 0,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-109",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-110",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-111",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-112",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-113",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-114",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-115",
+      "human": 0,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-116",
+      "human": 0,
+      "judge": 1
+    },
+    {
+      "trace_id": "synthetic-117",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-118",
+      "human": 0,
+      "judge": 0
+    },
+    {
+      "trace_id": "synthetic-119",
+      "human": 0,
+      "judge": 0
+    }
+  ],
+  "unlabeled": {
+    "n": 4820,
+    "judged_pass": 3262
+  }
+}

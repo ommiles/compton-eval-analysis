@@ -4,6 +4,14 @@ Turns a variant-comparison table of raw means into a defensible claim about
 which differences are real.
 """
 
+from .align import (
+    Alignment,
+    CorrectedRate,
+    correct_rate,
+    corrected_success_rate,
+    measure_alignment,
+    split_labeled,
+)
 from .bootstrap import Interval, bootstrap_mean, bootstrap_paired_delta
 from .compare import cliffs_delta, compare_run, holm_bonferroni
 from .load import DIMENSIONS, EvalRun, load_run, load_runs
@@ -13,7 +21,9 @@ from .reliability import Reliability, check_repeatability, icc_2_1, krippendorff
 __version__ = "0.1.0"
 
 __all__ = [
-    "DIMENSIONS", "EvalRun", "Interval", "PowerCurve", "Reliability",
+    "Alignment", "CorrectedRate", "DIMENSIONS", "EvalRun", "Interval",
+    "PowerCurve", "Reliability", "correct_rate", "corrected_success_rate",
+    "measure_alignment", "split_labeled",
     "bootstrap_mean", "bootstrap_paired_delta", "check_repeatability",
     "cliffs_delta", "compare_run", "holm_bonferroni", "icc_2_1",
     "krippendorff_alpha", "load_run", "load_runs", "power_for_run",

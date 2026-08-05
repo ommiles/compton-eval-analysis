@@ -11,6 +11,11 @@ from pathlib import Path
 
 import pandas as pd
 
+import json
+
+import numpy as np
+
+from .align import corrected_success_rate, split_labeled
 from .compare import compare_run
 from .load import load_run
 from .plots import plot_dimension_intervals, plot_paired_deltas, plot_power_curves
@@ -98,6 +103,92 @@ def analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def align(args: argparse.Namespace) -> int:
+    """Validate a judge against human labels, then correct a batch estimate."""
+    payload = json.loads(Path(args.labels).read_text())
+    rows = payload["test_set"]
+    human = np.array([int(r["human"]) for r in rows])
+    judge = np.array([int(r["judge"]) for r in rows])
+
+    batch = payload.get("unlabeled", {})
+    m = int(args.n_unlabeled or batch.get("n", 0))
+    k = int(args.n_judged_pass if args.n_judged_pass is not None
+            else batch.get("judged_pass", 0))
+
+    mode = payload.get("failure_mode", Path(args.labels).stem)
+    print(f"\nFailure mode: {mode}")
+    print(f"  test set: {len(rows)} human-labeled traces\n")
+
+    result = corrected_success_rate(
+        human, judge, n_unlabeled=m, n_judged_pass=k,
+        n_resamples=args.resamples,
+        include_batch_uncertainty=args.batch_uncertainty,
+        seed=args.seed,
+    )
+    a = result.alignment
+
+    print("── Judge accuracy (frozen test set) " + "─" * 39)
+    print(f"  {a}")
+    for w in a.warnings:
+        print(f"  ! {w}")
+    print()
+
+    print("── True rate over the unlabeled batch " + "─" * 37)
+    print(f"  raw judge pass rate : {result.observed:.4f}  ({k}/{m})")
+    if np.isfinite(result.corrected):
+        print(f"  bias-corrected      : {result.corrected:.4f}  "
+              f"[{result.low:.4f}, {result.high:.4f}]  "
+              f"({int(result.confidence*100)}% CI)")
+        print(f"  correction moved it : {result.shift:+.4f}")
+    else:
+        print(f"  bias-corrected      : unavailable — {result.note}")
+    if result.note and np.isfinite(result.corrected):
+        print(f"  note: {result.note}")
+    print()
+
+    if args.out:
+        out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
+        (out / "alignment.json").write_text(json.dumps({
+            "failure_mode": mode,
+            "tpr": a.tpr, "tnr": a.tnr,
+            "informedness": a.informedness,
+            "n_pass": a.n_pass, "n_fail": a.n_fail,
+            "observed": result.observed,
+            "corrected": result.corrected,
+            "ci_low": result.low, "ci_high": result.high,
+            "n_unlabeled": m, "n_judged_pass": k,
+            "warnings": a.warnings,
+        }, indent=2))
+        print(f"  wrote {out / 'alignment.json'}\n")
+    return 0
+
+
+def split(args: argparse.Namespace) -> int:
+    """Emit stratified train/dev/test indices for a labeled pool."""
+    labels = json.loads(Path(args.labels).read_text())
+    if isinstance(labels, dict):
+        labels = labels.get("labels") or [int(r["human"]) for r in labels["test_set"]]
+    y = np.array([int(v) for v in labels])
+
+    tr, dv, te = split_labeled(y.size, labels=y, train=args.train, dev=args.dev,
+                              seed=args.seed)
+    print(f"\n  train {len(tr):4}  ({y[tr].sum()} pass / {(~y[tr].astype(bool)).sum()} fail)"
+          "   few-shot candidates only")
+    print(f"  dev   {len(dv):4}  ({y[dv].sum()} pass / {(~y[dv].astype(bool)).sum()} fail)"
+          "   refine the prompt here")
+    print(f"  test  {len(te):4}  ({y[te].sum()} pass / {(~y[te].astype(bool)).sum()} fail)"
+          "   read once, after freezing\n")
+    for name, part in (("dev", dv), ("test", te)):
+        npass = int(y[part].sum()); nfail = len(part) - npass
+        if npass < 30 or nfail < 30:
+            print(f"  ! {name} has {npass} pass / {nfail} fail; want >=30 of each\n")
+    if args.out:
+        Path(args.out).write_text(json.dumps(
+            {"train": tr.tolist(), "dev": dv.tolist(), "test": te.tolist()}, indent=2))
+        print(f"  wrote {args.out}\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="compton-eval",
@@ -115,6 +206,25 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--candidate", default="v2", help="power: candidate variant")
     a.add_argument("--no-plots", action="store_true")
     a.set_defaults(func=analyze)
+
+    g = sub.add_parser("align", help="validate a judge and correct a batch estimate")
+    g.add_argument("labels", help="JSON with test_set [{human, judge}] and unlabeled counts")
+    g.add_argument("--n-unlabeled", type=int, default=None)
+    g.add_argument("--n-judged-pass", type=int, default=None)
+    g.add_argument("--resamples", type=int, default=20_000)
+    g.add_argument("--batch-uncertainty", action="store_true",
+                   help="also resample the unlabeled batch (wider, honest at small m)")
+    g.add_argument("--seed", type=int, default=0)
+    g.add_argument("--out", default=None)
+    g.set_defaults(func=align)
+
+    s_ = sub.add_parser("split", help="stratified train/dev/test split of labeled traces")
+    s_.add_argument("labels", help="JSON list of 0/1 human labels, or an align-style file")
+    s_.add_argument("--train", type=float, default=0.15)
+    s_.add_argument("--dev", type=float, default=0.425)
+    s_.add_argument("--seed", type=int, default=0)
+    s_.add_argument("--out", default=None)
+    s_.set_defaults(func=split)
 
     args = parser.parse_args(argv)
     return args.func(args)
