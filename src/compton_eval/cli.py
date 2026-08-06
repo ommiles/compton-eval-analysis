@@ -18,7 +18,10 @@ import numpy as np
 from .align import corrected_success_rate, split_labeled
 from .coding import (
     axial_prompt,
+    blind_map,
     build_queue,
+    census_queue,
+    write_reading_doc,
     check_taxonomy,
     load_open_codes,
     load_taxonomy,
@@ -201,24 +204,38 @@ def split(args: argparse.Namespace) -> int:
 
 
 def sample(args: argparse.Namespace) -> int:
-    """Build a blended review queue and emit an open-coding worksheet."""
+    """Build a review queue and emit an open-coding worksheet."""
     traces = load_traces(args.run)
-    queue = build_queue(traces, n=args.n, seed=args.seed)
 
-    counts: dict[str, int] = {}
-    for _, why in queue:
-        counts[why] = counts.get(why, 0) + 1
+    if args.all:
+        queue = census_queue(traces)
+        print(f"\n  census: all {len(queue)} traces queued (no sampling bias; "
+              "prevalence over this set is exact for the run)")
+    else:
+        queue = build_queue(traces, n=args.n, seed=args.seed)
+        counts: dict[str, int] = {}
+        for _, why in queue:
+            counts[why] = counts.get(why, 0) + 1
+        print(f"\n  {len(traces)} traces available, {len(queue)} queued")
+        for why in ("failure-driven", "uncertainty", "random"):
+            c = counts.get(why, 0)
+            print(f"    {why:16} {c:3}  ({c / len(queue):.0%})")
+        print(
+            "\n  The random slice is the only unbiased read on overall quality.\n"
+            "  Prevalence over the whole queue overstates failure by construction.\n"
+        )
 
-    print(f"\n  {len(traces)} traces available, {len(queue)} queued")
-    for why in ("failure-driven", "uncertainty", "random"):
-        c = counts.get(why, 0)
-        print(f"    {why:16} {c:3}  ({c / len(queue):.0%})")
-    print(
-        "\n  The random slice is the only unbiased read on overall quality.\n"
-        "  Prevalence over the whole queue overstates failure by construction.\n"
-    )
+    key = None
+    if args.blind:
+        key = blind_map(traces, seed=args.seed)
+        key_path = Path(args.out).with_name("key-do-not-open.json")
+        key_path.write_text(json.dumps(key, indent=2))
+        doc_path = write_reading_doc(traces, key, Path(args.out).with_name("reading-doc.md"))
+        print(f"  blinded: variants shuffled behind letters per meeting")
+        print(f"  reading doc: {doc_path}")
+        print(f"  key (leave sealed until review is done): {key_path}")
 
-    out = open_code_stub(queue, args.out)
+    out = open_code_stub(queue, args.out, blind=key)
     print(f"  wrote {out}")
     print(
         "\n  Next: read each trace and fill in `note` and `acceptable`.\n"
@@ -330,6 +347,10 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--n", type=int, default=40)
     q.add_argument("--seed", type=int, default=0)
     q.add_argument("--out", default="open-codes.json")
+    q.add_argument("--all", action="store_true",
+                   help="queue every trace (census) instead of sampling")
+    q.add_argument("--blind", action="store_true",
+                   help="hide variants behind shuffled letters; writes key + reading doc")
     q.set_defaults(func=sample)
 
     sat = sub.add_parser("saturation", help="has open coding gone far enough?")

@@ -251,3 +251,95 @@ def test_loads_real_eval_artifacts():
     t = traces[0]
     assert t.text and t.deterministic
     assert t.meta["model"] and t.meta["n_chapters"] > 0
+
+
+# ---------------------------------------------------------------- blinding
+
+from compton_eval.coding import blind_map, census_queue, unblind_codes, write_reading_doc
+
+
+def _variant_population() -> list[Trace]:
+    out = []
+    for mid in (10, 20, 30):
+        for var in ("v0", "v1", "v2"):
+            out.append(Trace(f"{mid}-{var}", mid, var,
+                             text=f"summary of meeting {mid} under {var}",
+                             scores={"factual_precision": 0.5}))
+    return out
+
+
+def test_census_covers_everything_once():
+    traces = _variant_population()
+    q = census_queue(traces)
+    assert len(q) == len(traces)
+    assert all(why == "census" for _, why in q)
+
+
+def test_blind_map_round_trips_and_hides_variants():
+    traces = _variant_population()
+    key = blind_map(traces, seed=1)
+    assert len(key) == 9
+    # every display id is meeting-letter, never meeting-variant
+    assert all(d.split("-")[1] in "ABC" for d in key)
+    assert sorted(key.values()) == sorted(t.trace_id for t in traces)
+    # letters unique within each meeting
+    for mid in (10, 20, 30):
+        letters = [d.split("-")[1] for d in key if d.startswith(f"{mid}-")]
+        assert sorted(letters) == ["A", "B", "C"]
+
+
+def test_blind_shuffle_actually_shuffles():
+    """Across meetings, letter A must not always be the same variant."""
+    traces = _variant_population()
+    key = blind_map(traces, seed=1)
+    a_variants = {key[f"{mid}-A"].split("-")[1] for mid in (10, 20, 30)}
+    assert len(a_variants) > 1
+
+
+def test_blind_worksheet_leaks_nothing(tmp_path):
+    traces = _variant_population()
+    key = blind_map(traces, seed=2)
+    p = open_code_stub(census_queue(traces), tmp_path / "w.json", blind=key)
+    raw = p.read_text()
+    payload = json.loads(raw)
+    assert "variant" not in raw and "scores" not in raw
+    assert all("-v" not in r["trace_id"] for r in payload["traces"])
+
+
+def test_unblind_restores_trace_ids(tmp_path):
+    traces = _variant_population()
+    key = blind_map(traces, seed=3)
+    p = open_code_stub(census_queue(traces), tmp_path / "w.json", blind=key)
+    payload = json.loads(p.read_text())
+    for r in payload["traces"]:
+        r["note"] = "nothing wrong"
+        r["acceptable"] = True
+    p.write_text(json.dumps(payload))
+
+    codes = unblind_codes(load_open_codes(p), key)
+    assert sorted(c.trace_id for c in codes) == sorted(t.trace_id for t in traces)
+
+
+def test_unblind_rejects_unknown_ids():
+    with pytest.raises(ValueError, match="not in the blind key"):
+        unblind_codes([OpenCode("99-Z", "note", acceptable=True)], {"10-A": "10-v0"})
+
+
+def test_reading_doc_shows_text_not_verdicts(tmp_path):
+    traces = [
+        Trace("10-v0", 10, "v0", text="council approved the water contract",
+              scores={"factual_precision": 0.2},
+              meta={"transcript_length": 5000, "n_chapters": 4,
+                    "anomaly_count": 1, "anomalies_flagged": ["repeat_vendor"],
+                    "tone_rationale": "SECRET VERDICT", "factual_errors": ["SECRET"]}),
+        Trace("10-v1", 10, "v1", text="the water contract passed 4-1",
+              scores={"factual_precision": 0.9},
+              meta={"transcript_length": 5000, "n_chapters": 4,
+                    "anomaly_count": 1, "anomalies_flagged": ["repeat_vendor"]}),
+    ]
+    key = blind_map(traces, seed=4)
+    doc = write_reading_doc(traces, key, tmp_path / "doc.md").read_text()
+    assert "council approved the water contract" in doc
+    assert "repeat_vendor" in doc          # input fact: allowed
+    assert "SECRET" not in doc             # judgments: excluded
+    assert "v0" not in doc and "v1" not in doc

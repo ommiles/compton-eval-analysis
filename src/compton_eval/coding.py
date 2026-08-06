@@ -147,6 +147,7 @@ def load_traces(run_dir: str | Path) -> list[Trace]:
                     "anomaly_count": a.get("input_anomaly_count"),
                     "has_spanish": bool(a.get("summary_es")),
                     "error": a.get("error"),
+                    "anomalies_flagged": row.get("anomalies_flagged"),
                     "tone_rationale": row.get("tone_rationale"),
                     "factual_errors": row.get("factual_errors"),
                 },
@@ -233,9 +234,106 @@ def build_queue(
     return out
 
 
+# ------------------------------------------------------------- blinding
+
+def census_queue(traces: list[Trace]) -> list[tuple[Trace, str]]:
+    """Every trace, tagged "census". With a population small enough to read
+    in full, the blended queue is pointless — full coverage has no sampling
+    bias, and prevalence over it is exact for the run."""
+    return [(t, "census") for t in traces]
+
+
+def blind_map(traces: list[Trace], *, seed: int = 0) -> dict[str, str]:
+    """{display_id: trace_id}, variants shuffled behind letters per meeting.
+
+    A reviewer who can see "v0" on a trace knows it came from the weak
+    baseline prompt and will find what they expect to find. Letters remove
+    the label; the shuffle removes position as a tell.
+    """
+    rng = np.random.default_rng(seed)
+    by_meeting: dict[int, list[Trace]] = {}
+    for t in traces:
+        by_meeting.setdefault(t.meeting_id, []).append(t)
+
+    key: dict[str, str] = {}
+    for mid in sorted(by_meeting):
+        group = sorted(by_meeting[mid], key=lambda t: t.variant)
+        order = rng.permutation(len(group))
+        for letter, idx in zip("ABCDEFGH", order):
+            key[f"{mid}-{letter}"] = group[idx].trace_id
+    return key
+
+
+def unblind_codes(codes: list[OpenCode], key: dict[str, str]) -> list[OpenCode]:
+    """Swap display ids back to trace ids after review is finished."""
+    missing = [c.trace_id for c in codes if c.trace_id not in key]
+    if missing:
+        raise ValueError(f"ids not in the blind key: {missing[:5]}")
+    return [
+        OpenCode(key[c.trace_id], c.note, c.acceptable, c.reviewer)
+        for c in codes
+    ]
+
+
+def write_reading_doc(
+    traces: list[Trace],
+    key: dict[str, str],
+    out: str | Path,
+) -> Path:
+    """Markdown for the human to read: input facts plus blinded summaries.
+
+    Includes what the meeting *contained* (transcript length, anomaly types
+    the deterministic detectors flagged) and excludes every judgment the
+    pipeline has already formed (scores, tone rationale, factual-error
+    lists). Facts enable review; verdicts pre-empt it.
+    """
+    by_id = {t.trace_id: t for t in traces}
+    by_meeting: dict[int, list[tuple[str, Trace]]] = {}
+    for display, tid in key.items():
+        mid = int(display.split("-")[0])
+        by_meeting.setdefault(mid, []).append((display, by_id[tid]))
+
+    lines = [
+        "# Open-coding reading doc — round 1",
+        "",
+        "Read each summary as a Compton resident would. For each one, note in",
+        "the worksheet the FIRST thing that goes wrong, in one short lowercase",
+        "phrase, and mark it acceptable or not. Every row gets a note — write",
+        '"nothing wrong" if nothing is. Do not diagnose causes or propose',
+        "fixes. Variants are blinded; do not open the key file until done.",
+        "",
+    ]
+    for mid in sorted(by_meeting):
+        entries = sorted(by_meeting[mid])
+        first = entries[0][1]
+        anomalies = first.meta.get("anomalies_flagged") or []
+        lines += [
+            f"## Meeting {mid}",
+            "",
+            f"Transcript: {first.meta.get('transcript_length'):,} chars · "
+            f"{first.meta.get('n_chapters')} chapters · "
+            f"structured items: {first.meta.get('anomaly_count')} anomalies "
+            f"flagged by detectors"
+            + (f" ({', '.join(anomalies)})" if anomalies else ""),
+            "",
+        ]
+        for display, t in entries:
+            lines += [f"### {display}", "", t.text.strip() or "(empty summary)", ""]
+
+    p = Path(out)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("\n".join(lines))
+    return p
+
+
 # ----------------------------------------------------------- open coding
 
-def open_code_stub(queue: list[tuple[Trace, str]], out: str | Path) -> Path:
+def open_code_stub(
+    queue: list[tuple[Trace, str]],
+    out: str | Path,
+    *,
+    blind: dict[str, str] | None = None,
+) -> Path:
     """Write a worksheet for a human to fill in. Deliberately not automated.
 
     Ch. 3 recommends an LLM for axial coding but explicitly not for open
@@ -244,18 +342,35 @@ def open_code_stub(queue: list[tuple[Trace, str]], out: str | Path) -> Path:
     """
     p = Path(out)
     p.parent.mkdir(parents=True, exist_ok=True)
-    rows = [
-        {
-            "trace_id": t.trace_id,
-            "sampled_as": why,
-            "meeting_id": t.meeting_id,
-            "variant": t.variant,
-            "scores": t.deterministic,
-            "note": "",
-            "acceptable": None,
-        }
-        for t, why in queue
-    ]
+    if blind:
+        reverse = {tid: disp for disp, tid in blind.items()}
+        missing = [t.trace_id for t, _ in queue if t.trace_id not in reverse]
+        if missing:
+            raise ValueError(f"traces missing from blind map: {missing[:5]}")
+        # Variant and scores are exactly the fields blinding exists to hide.
+        rows = [
+            {
+                "trace_id": reverse[t.trace_id],
+                "sampled_as": why,
+                "meeting_id": t.meeting_id,
+                "note": "",
+                "acceptable": None,
+            }
+            for t, why in sorted(queue, key=lambda q: reverse[q[0].trace_id])
+        ]
+    else:
+        rows = [
+            {
+                "trace_id": t.trace_id,
+                "sampled_as": why,
+                "meeting_id": t.meeting_id,
+                "variant": t.variant,
+                "scores": t.deterministic,
+                "note": "",
+                "acceptable": None,
+            }
+            for t, why in queue
+        ]
     p.write_text(json.dumps({
         "_instructions": (
             "Read each trace and write ONE short lowercase note about the FIRST "
