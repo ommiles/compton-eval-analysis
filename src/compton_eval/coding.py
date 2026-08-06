@@ -376,8 +376,17 @@ def open_code_stub(
             "Read each trace and write ONE short lowercase note about the FIRST "
             "thing that went wrong, from the reader's perspective. Do not "
             "diagnose causes or propose fixes. Set acceptable to true or false; "
-            "pick a side even when it feels borderline. Leave note empty only if "
-            "you skipped the trace."
+            "pick a side even when it feels borderline. Every row gets a note — "
+            "write 'nothing wrong' if nothing is; leave it empty only if you "
+            "skipped the trace. What counts as wrong: you are the instrument, "
+            "not a rubric. Note whatever makes you wince as the end reader. "
+            "Four questions catch most of it — misled (stated but not so, or "
+            "attributed to no one)? shortchanged (the big number, the vote, the "
+            "dissent missing)? spun (reads like the subject wrote it about "
+            "itself)? lost (can't follow what happened)? For acceptable: would "
+            "you ship this exact output tonight? Rough notes are fine; if "
+            "something bugs you that you can't name, write that down too — "
+            "those notes are what the current metrics can't see."
         ),
         "traces": rows,
     }, indent=2))
