@@ -31,6 +31,7 @@ from .coding import (
     saturation_report,
 )
 from .compare import compare_run
+from .entities import check_names, load_vocabulary, score_trace
 from .load import load_run
 from .plots import plot_dimension_intervals, plot_paired_deltas, plot_power_curves
 from .power import power_for_run, power_table
@@ -305,6 +306,56 @@ def prevalence_cmd(args: argparse.Namespace) -> int:
     return 0
 
 
+
+def names(args: argparse.Namespace) -> int:
+    """Deterministic proper-name check over an eval run."""
+    vocab = load_vocabulary(args.vocab) if args.vocab else load_vocabulary()
+    if args.extra:
+        extra = json.loads(Path(args.extra).read_text())
+        for g in extra.get("garbles", []):
+            vocab.add_garble(g["garbled"], g["corrected"],
+                             category=g.get("category", "person"),
+                             evidence=g.get("evidence", "extra"))
+        for a in extra.get("vocabulary_additions", []):
+            from .entities import _norm
+            vocab.known_good.add(_norm(a["name"]))
+            for t in _norm(a["name"]).split():
+                if len(t) >= 5:
+                    vocab.known_good.add(t)
+
+    traces = load_traces(args.run)
+    print(f"\n  vocabulary: {vocab.size['garbles']} garbles, "
+          f"{vocab.size['canonical']} canonical entities")
+    print(f"  checking {len(traces)} traces\n")
+
+    flagged, review_only, rows = 0, 0, []
+    for t in sorted(traces, key=lambda x: (x.meeting_id, x.variant)):
+        found = check_names(t.text, vocab)
+        high = [f for f in found if f.confidence == "high"]
+        review = [f for f in found if f.confidence == "review"]
+        rows.append({"trace_id": t.trace_id, "misspelled": 1 if high else 0,
+                     "high": [str(f) for f in high],
+                     "review": [str(f) for f in review]})
+        if high:
+            flagged += 1
+            print(f"  FAIL {t.trace_id:10} " + "; ".join(str(f) for f in high))
+        elif review and not args.quiet:
+            review_only += 1
+            print(f"  ?    {t.trace_id:10} " + "; ".join(str(f) for f in review))
+
+    print(f"\n  {flagged}/{len(traces)} fail the check "
+          f"({flagged / len(traces):.0%})")
+    if review_only:
+        print(f"  {review_only} more have near-misses worth reviewing "
+              "(not counted as failures)")
+    print()
+
+    if args.out:
+        Path(args.out).write_text(json.dumps(rows, indent=2))
+        print(f"  wrote {args.out}\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="compton-eval",
@@ -367,6 +418,14 @@ def main(argv: list[str] | None = None) -> int:
     pv.add_argument("--taxonomy", required=True)
     pv.add_argument("--out", default=None)
     pv.set_defaults(func=prevalence_cmd)
+
+    nm = sub.add_parser("names", help="deterministic proper-name check over a run")
+    nm.add_argument("run", help="eval run directory")
+    nm.add_argument("--vocab", default=None, help="entity vocabulary JSON")
+    nm.add_argument("--extra", default=None, help="additional garbles JSON")
+    nm.add_argument("--quiet", action="store_true", help="hide near-misses")
+    nm.add_argument("--out", default=None)
+    nm.set_defaults(func=names)
 
     args = parser.parse_args(argv)
     return args.func(args)

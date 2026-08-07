@@ -117,9 +117,46 @@ Uncertainty here means the deterministic signals disagree with each other, which
 
 The left number is the rate across the review queue, which is biased upward by construction. The right one uses only the randomly sampled traces and is the one that answers "how often does this happen." Reporting the queue rate as the system's failure rate is an easy and expensive mistake, so the tool computes both and labels them.
 
+## The entity checker
+
+Round-1 error analysis found a misspelled proper name in 47% of summaries, spread evenly across prompt variants. It is the one failure mode that needs no judge: the correct spellings are in the database.
+
+```
+compton-eval names <run-dir> --extra round1_garbles.json
+```
+
+```
+  FAIL 4-v1    alvarez madruga -> Olivarez Madruga; norseman -> Nossaman
+  FAIL 1885-v1 darton -> Darden x3
+  FAIL 4219-v0 maxie d filer -> Maxcy D. Filer; matheson -> Matthisen
+
+  17/36 fail the check (47%)
+```
+
+Two tiers with different error profiles. **Known garbles** are an exact lookup against a curated map and cannot produce false positives, since something is only in the map because a human asserted it is wrong. **Near misses** flag a capitalized token close to a canonical name but not equal to it, which is how the map grows; they are reported for review and never gate the metric.
+
+The near-miss tier needs hard guards or it becomes noise. A token matching any known entity is never flagged, so `Sanders Roberts` the law firm is not reported as a misspelling of Treasurer `Sanders`. Distance-2 matches are only trusted after a title word, because without that context they pair `Penal` (from Penal Code) with `Bernal`.
+
+Measured against 36 human-labeled traces:
+
+| Vocabulary | TPR | TNR |
+|---|---|---|
+| As shipped in prod | 0.167 | 1.000 |
+| Plus 12 round-1 garbles | 1.000 | 1.000 |
+
+**That second row is in-sample and should not be read as accuracy.** The garbles were discovered by reading these same traces, so the checker is being tested on its own training data. The honest estimate comes from the next eval run, on names nobody has looked at yet. The first row is the real measurement: the lexicon as it existed caught one garble in six.
+
+Building it surfaced three things worth more than the checker:
+
+**Nothing reads the lexicon.** `asr_corrections` (43 rows) and `officials.aliases` (153 aliases) have no consumers anywhere in the platform codebase. Migration 039 seeded them and nothing has ever queried them.
+
+**Phrase entries miss.** The map held `Attorney Eric Paradin` while a summary said `Mr. Paradin`, so the correction never fired. Entries should be surname-level.
+
+**It caught a labeling error of mine.** I had applied a garble label to all three variants of one meeting without checking each; the checker reported one as a false negative, and it was right — that variant never mentions the name. The label is corrected, with provenance.
+
 ## Validating the judge
 
-Following Husain and Shankar, [*Evals for AI Engineers*](https://evals.info) ch. 5.
+Following Husain and Shankar, [*Evals for AI Engineers*](https://evals.info), ch. 5.
 
 Split labeled traces three ways, refine the judge prompt against dev only, and read the test split exactly once after freezing the prompt. Then measure two rates on that frozen split: how many real passes the judge catches, and how many real fails it catches.
 
@@ -196,11 +233,14 @@ src/compton_eval/
   compare.py      signed-rank, Cliff's delta, Holm correction
   power.py        simulation-based prospective power
   coding.py       blended sampling, open/axial coding, taxonomy, prevalence
+  entities.py     deterministic proper-name check against a DB vocabulary
   align.py        TPR/TNR against human labels, Rogan-Gladen correction, splits
   reliability.py  ICC(2,1) and Krippendorff's alpha; self-consistency only
   plots.py        forest, interval, and power charts
-  cli.py          `analyze` `align` `split` `sample` `saturation` `axial` `prevalence`
-tests/            67 tests, property-based rather than golden-number
+  cli.py          `analyze` `align` `split` `sample` `saturation` `axial`
+                  `prevalence` `names`
+  data/           entity vocabulary exported from prod, plus round-1 garbles
+tests/            93 tests, property-based rather than golden-number
 examples/         run output, plus synthetic labels for the align demo
 ```
 

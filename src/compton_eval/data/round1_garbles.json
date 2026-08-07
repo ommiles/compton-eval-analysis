@@ -1,0 +1,101 @@
+{
+  "_source": "Discovered during round-1 error analysis, 2026-08. Each verified against officials/agenda_items in prod, or public record where the DB was silent. None of these were in asr_corrections.",
+  "garbles": [
+    {
+      "garbled": "Darton",
+      "corrected": "Darden",
+      "category": "person",
+      "confidence": "high",
+      "evidence": "officials table: Lillie P. Darden, Council Member, current"
+    },
+    {
+      "garbled": "Inez Atkins",
+      "corrected": "Inez Adkins",
+      "category": "person",
+      "confidence": "high",
+      "evidence": "agenda_items id 6116 (meeting 1883): 'Public Safety Commissioner Inez Adkins'"
+    },
+    {
+      "garbled": "Walter Canteros",
+      "corrected": "Walter Quinteros",
+      "category": "person",
+      "confidence": "medium",
+      "evidence": "public record: Charter Review Board appointment, March 17 2026"
+    },
+    {
+      "garbled": "UNA Solutions",
+      "corrected": "EUNA Solutions",
+      "category": "firm",
+      "confidence": "high",
+      "evidence": "sibling variants and vendor record both give EUNA"
+    },
+    {
+      "garbled": "Maxie D. Filer",
+      "corrected": "Maxcy D. Filer",
+      "category": "person",
+      "confidence": "high",
+      "evidence": "Maxcy D. Filer Square, named intersection"
+    },
+    {
+      "garbled": "Matheson",
+      "corrected": "Matthisen",
+      "category": "place",
+      "confidence": "medium",
+      "evidence": "Arbutus-Matthisen intersection, meeting 4219 siblings"
+    },
+    {
+      "garbled": "Nassimen",
+      "corrected": "Nossaman",
+      "category": "firm",
+      "confidence": "high",
+      "evidence": "law firm; asr_corrections already maps 'Nonson LLP' to Nossaman LLP"
+    },
+    {
+      "garbled": "Norseman",
+      "corrected": "Nossaman",
+      "category": "firm",
+      "confidence": "high",
+      "evidence": "same firm; all three meeting-4 variants agreed on this garble"
+    },
+    {
+      "garbled": "Olivares Madruga",
+      "corrected": "Olivarez Madruga",
+      "category": "firm",
+      "confidence": "high",
+      "evidence": "law firm Olivarez Madruga Lemieux O'Neill"
+    },
+    {
+      "garbled": "Le Altrejo",
+      "corrected": "Leal Trejo",
+      "category": "firm",
+      "confidence": "high",
+      "evidence": "law firm Leal Trejo APC"
+    },
+    {
+      "garbled": "Alvarez-Madruga",
+      "corrected": "Olivarez Madruga",
+      "category": "firm",
+      "confidence": "medium",
+      "evidence": "meeting-4 variants; conflated with Alvarez Glassman"
+    },
+    {
+      "garbled": "Paradin",
+      "corrected": "Perrodin",
+      "category": "person",
+      "confidence": "high",
+      "evidence": "surname-level. asr_corrections holds only the phrase 'Attorney Eric Paradin', which failed to match 'Mr. Paradin' in a shipped summary. Lexicon entries should be surname-level, not phrase-level."
+    }
+  ],
+  "vocabulary_additions": [
+    {
+      "name": "Sanders Roberts",
+      "category": "firm",
+      "why": "law firm; near-miss tier flagged 'Roberts' in 6 traces because the firm is absent from the vendor list"
+    },
+    {
+      "name": "Bredney Rodriguez",
+      "category": "person",
+      "why": "Compton Library Manager; real person absent from officials/staff"
+    }
+  ]
+}
