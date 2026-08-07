@@ -152,7 +152,7 @@ Building it surfaced three things worth more than the checker:
 
 **Phrase entries miss.** The map held `Attorney Eric Paradin` while a summary said `Mr. Paradin`, so the correction never fired. Entries should be surname-level.
 
-**It caught a labeling error of mine.** I had applied a garble label to all three variants of one meeting without checking each; the checker reported one as a false negative, and it was right — that variant never mentions the name. The label is corrected, with provenance.
+**It caught a labeling error of mine.** I had applied a garble label to all three variants of one meeting without checking each; the checker reported one as a false negative, and it was right: that variant never mentions the name. The label is corrected, with provenance.
 
 ## Validating the judge
 
